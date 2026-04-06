@@ -1,3 +1,21 @@
+---
+title: OpenCLIP Inference API
+emoji: 🔍
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 8000
+tags:
+  - openclip
+  - embeddings
+  - image-embeddings
+  - text-embeddings
+  - clip
+  - fastapi
+  - docker
+short_description: Self-hosted REST API for image & text embeddings via OpenCLIP
+---
+
 # OpenCLIP Inference API
 
 Self-hosted REST API for generating **image and text embeddings** using [OpenCLIP](https://github.com/mlfoundations/open_clip). Designed for production use with Redis caching, Celery batch processing, and Docker deployment.
