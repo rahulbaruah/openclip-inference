@@ -13,7 +13,7 @@ tags:
   - clip
   - fastapi
   - docker
-short_description: Self-hosted REST API for image & text embeddings via OpenCLIP
+short_description: Self-hosted API for OpenCLIP embeddings
 ---
 
 # OpenCLIP Inference API
