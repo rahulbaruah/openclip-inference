@@ -36,15 +36,16 @@ RUN apt-get update && \
 # Copy application code
 COPY . .
 
+# Non-root user
+RUN groupadd -r appuser && useradd -m -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
 # Pre-download model weights at build time for fast cold starts
 RUN python -c "\
 import open_clip; \
 open_clip.create_model_and_transforms('ViT-B-32', pretrained='openai')" \
     && echo "Model weights cached successfully"
-
-# Non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
