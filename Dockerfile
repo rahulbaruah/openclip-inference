@@ -28,9 +28,9 @@ WORKDIR /app
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# System deps for Pillow
+# System deps for Pillow and Redis
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libjpeg62-turbo libwebp7 && \
+    apt-get install -y --no-install-recommends libjpeg62-turbo libwebp7 redis-server && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy application code
@@ -54,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 8000
 
 # Production server via Gunicorn + Uvicorn workers
-CMD ["gunicorn", "app.main:app", "-c", "gunicorn.conf.py"]
+CMD ["sh", "-c", "redis-server --daemonize yes && gunicorn app.main:app -c gunicorn.conf.py"]
