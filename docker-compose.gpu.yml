@@ -1,0 +1,41 @@
+# ═══════════════════════════════════════════════════════════════════════
+# OpenCLIP Inference API — Docker Compose GPU Override
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Usage (combine with base):
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build -d
+#
+# Prerequisites:
+#   - NVIDIA Container Toolkit installed
+#   - nvidia-docker2 / nvidia-container-runtime configured
+#
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    environment:
+      - DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    environment:
+      - DEVICE=cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
