@@ -28,12 +28,12 @@ class Settings(BaseSettings):
     log_level: str = "info"
 
     # ── Redis ────────────────────────────────────────────────────────────
-    redis_url: str = "redis://redis:6379/0"
+    redis_url: str = "redis://localhost:6379/0"
     cache_ttl: int = 86400  # seconds (24 h)
 
     # ── Celery ───────────────────────────────────────────────────────────
-    celery_broker_url: str = "redis://redis:6379/1"
-    celery_result_backend: str = "redis://redis:6379/2"
+    celery_broker_url: str = "redis://localhost:6379/1"
+    celery_result_backend: str = "redis://localhost:6379/2"
 
     # ── Batch ────────────────────────────────────────────────────────────
     max_batch_size: int = 64
