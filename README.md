@@ -24,7 +24,7 @@ Self-hosted REST API for generating **image and text embeddings** using [OpenCLI
 
 ## Features
 
-- 🖼️ **Image embeddings** — upload files, send base64-encoded images, or pass a public image URL
+- 🖼️ **Image embeddings** — send a base64-encoded image or pass a public image URL
 - 📝 **Text embeddings** — encode text into the same vector space as images
 - 🔀 **Batch processing** — embed multiple images/texts in a single request
 - ⚡ **Redis caching** — avoid recomputing embeddings for identical images
@@ -77,26 +77,22 @@ curl http://localhost:8000/model/info
 
 ### `POST /embed/image`
 
-Generate an embedding for a single image.
+Generate an embedding for a single image. The endpoint accepts **JSON only** — provide exactly one of `base64` or `url`.
 
-**Option A: File upload**
+**Option A: Base64 JSON**
 
-```bash
-curl -X POST http://localhost:8000/embed/image \
-  -F "file=@photo.jpg"
-```
-
-**Option B: Base64 JSON**
+Base64-encode your image and send it in the request body.
 
 ```bash
+# Encode and send in one step
 curl -X POST http://localhost:8000/embed/image \
   -H "Content-Type: application/json" \
-  -d '{"base64": "<base64-encoded-image>"}'
+  -d "{\"base64\": \"$(base64 -w0 photo.jpg)\"}"
 ```
 
-**Option C: Image URL**
+**Option B: Image URL**
 
-Pass any publicly accessible image URL and the API will fetch and embed it server-side.
+Pass any publicly accessible image URL and the API fetches and embeds it server-side.
 
 ```bash
 curl -X POST http://localhost:8000/embed/image \
@@ -311,12 +307,16 @@ Set `DEVICE=cuda` in your `.env` file.
 ### Python
 
 ```python
-import requests
+import base64, requests
 
-# Embed an image (file upload)
+# Embed an image (base64)
 with open("photo.jpg", "rb") as f:
-    resp = requests.post("http://localhost:8000/embed/image", files={"file": f})
-    embedding = resp.json()["embedding"]  # list of 512 floats
+    b64 = base64.b64encode(f.read()).decode()
+resp = requests.post(
+    "http://localhost:8000/embed/image",
+    json={"base64": b64}
+)
+embedding = resp.json()["embedding"]  # list of 512 floats
 
 # Embed an image (URL)
 resp = requests.post(
@@ -343,12 +343,11 @@ print(f"Similarity: {similarity:.4f}")
 ```php
 use Illuminate\Support\Facades\Http;
 
-// Embed an image (file upload)
-$response = Http::attach(
-    'file',
-    file_get_contents($imagePath),
-    'photo.jpg'
-)->post('http://openclip-api:8000/embed/image');
+// Embed an image (base64)
+$b64 = base64_encode(file_get_contents($imagePath));
+$response = Http::post('http://openclip-api:8000/embed/image', [
+    'base64' => $b64,
+]);
 
 $embedding = $response->json('embedding');
 
