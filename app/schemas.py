@@ -7,7 +7,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field
 
 
 # ── Enums ────────────────────────────────────────────────────────────────
@@ -27,6 +27,11 @@ class TextEmbedRequest(BaseModel):
 class ImageBase64Request(BaseModel):
     """Request body for base64-encoded image embedding."""
     base64: str = Field(..., min_length=1, description="Base64-encoded image data")
+
+
+class ImageURLRequest(BaseModel):
+    """Request body for URL-referenced image embedding."""
+    url: AnyHttpUrl = Field(..., description="Publicly accessible image URL")
 
 
 class BatchItem(BaseModel):

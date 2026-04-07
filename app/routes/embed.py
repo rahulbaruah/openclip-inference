@@ -5,6 +5,8 @@ Embedding endpoints:  /embed/image  |  /embed/text  |  /embed/batch
 import base64
 import logging
 
+import httpx
+
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.model import get_embedding_dim
@@ -14,6 +16,7 @@ from app.schemas import (
     BatchEmbeddingResult,
     EmbeddingResponse,
     ImageBase64Request,
+    ImageURLRequest,
     TextEmbedRequest,
 )
 from app.services.embedding import embed_batch, embed_image, embed_text
@@ -41,11 +44,13 @@ _ALLOWED_TYPES = {
 async def embed_image_endpoint(
     file: UploadFile | None = File(None),
     body: ImageBase64Request | None = None,
+    url_body: ImageURLRequest | None = None,
 ):
     """
-    Accepts either:
+    Accepts any one of:
     - A multipart file upload (`file` field), or
-    - A JSON body with `{"base64": "..."}`.
+    - A JSON body with `{"base64": "..."}`, or
+    - A JSON body with `{"url": "https://..."}` (publicly accessible image URL).
     """
     image_bytes: bytes | None = None
 
@@ -66,10 +71,36 @@ async def embed_image_endpoint(
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid base64 data")
 
+    # ── URL body ─────────────────────────────────────────────────────
+    elif url_body is not None:
+        url = str(url_body.url)
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                response = await client.get(url)
+            response.raise_for_status()
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=408, detail=f"Request timed out fetching URL: {url}")
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to fetch image URL (HTTP {exc.response.status_code}): {url}",
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Could not retrieve URL: {exc}")
+
+        content_type = response.headers.get("content-type", "").split(";")[0].strip()
+        if content_type and content_type not in _ALLOWED_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported content type '{content_type}' at URL. "
+                       f"Allowed: {', '.join(sorted(_ALLOWED_TYPES))}",
+            )
+        image_bytes = response.content
+
     if not image_bytes:
         raise HTTPException(
             status_code=400,
-            detail="Provide either a file upload or a JSON body with 'base64'.",
+            detail="Provide a file upload, a JSON body with 'base64', or a JSON body with 'url'.",
         )
 
     try:

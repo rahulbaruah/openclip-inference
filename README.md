@@ -24,7 +24,7 @@ Self-hosted REST API for generating **image and text embeddings** using [OpenCLI
 
 ## Features
 
-- 🖼️ **Image embeddings** — upload files or send base64-encoded images
+- 🖼️ **Image embeddings** — upload files, send base64-encoded images, or pass a public image URL
 - 📝 **Text embeddings** — encode text into the same vector space as images
 - 🔀 **Batch processing** — embed multiple images/texts in a single request
 - ⚡ **Redis caching** — avoid recomputing embeddings for identical images
@@ -92,6 +92,16 @@ curl -X POST http://localhost:8000/embed/image \
 curl -X POST http://localhost:8000/embed/image \
   -H "Content-Type: application/json" \
   -d '{"base64": "<base64-encoded-image>"}'
+```
+
+**Option C: Image URL**
+
+Pass any publicly accessible image URL and the API will fetch and embed it server-side.
+
+```bash
+curl -X POST http://localhost:8000/embed/image \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/photo.jpg"}'
 ```
 
 **Response:**
@@ -303,10 +313,17 @@ Set `DEVICE=cuda` in your `.env` file.
 ```python
 import requests
 
-# Embed an image
+# Embed an image (file upload)
 with open("photo.jpg", "rb") as f:
     resp = requests.post("http://localhost:8000/embed/image", files={"file": f})
     embedding = resp.json()["embedding"]  # list of 512 floats
+
+# Embed an image (URL)
+resp = requests.post(
+    "http://localhost:8000/embed/image",
+    json={"url": "https://example.com/photo.jpg"}
+)
+embedding = resp.json()["embedding"]
 
 # Embed text
 resp = requests.post(
@@ -326,12 +343,19 @@ print(f"Similarity: {similarity:.4f}")
 ```php
 use Illuminate\Support\Facades\Http;
 
-// Embed an image
+// Embed an image (file upload)
 $response = Http::attach(
     'file',
     file_get_contents($imagePath),
     'photo.jpg'
 )->post('http://openclip-api:8000/embed/image');
+
+$embedding = $response->json('embedding');
+
+// Embed an image (URL)
+$response = Http::post('http://openclip-api:8000/embed/image', [
+    'url' => 'https://example.com/photo.jpg',
+]);
 
 $embedding = $response->json('embedding');
 
@@ -346,14 +370,23 @@ $textEmbedding = $response->json('embedding');
 ### JavaScript / Node.js
 
 ```javascript
+// Embed an image by URL
+const imgResponse = await fetch('http://localhost:8000/embed/image', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ url: 'https://example.com/photo.jpg' }),
+});
+const { embedding: imgEmbedding, dim } = await imgResponse.json();
+console.log(`Got ${dim}-dimensional image embedding`);
+
 // Embed text
 const response = await fetch('http://localhost:8000/embed/text', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ text: 'a photo of a sunset' }),
 });
-const { embedding, dim } = await response.json();
-console.log(`Got ${dim}-dimensional embedding`);
+const { embedding, dim: textDim } = await response.json();
+console.log(`Got ${textDim}-dimensional text embedding`);
 ```
 
 ---
