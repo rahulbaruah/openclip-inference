@@ -54,4 +54,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 8000
 
 # Production server via Gunicorn + Uvicorn workers
-CMD ["sh", "-c", "redis-server --daemonize yes && gunicorn app.main:app -c gunicorn.conf.py"]
+# redis-server runs as non-root appuser: use /tmp for dir (writable), no logfile,
+# then sleep 1s to ensure Redis is ready before gunicorn calls init_redis().
+CMD ["sh", "-c", "redis-server --daemonize yes --loglevel warning --dir /tmp --logfile '' && sleep 1 && gunicorn app.main:app -c gunicorn.conf.py"]
