@@ -15,8 +15,7 @@ from app.schemas import (
     BatchEmbedResponse,
     BatchEmbeddingResult,
     EmbeddingResponse,
-    ImageBase64Request,
-    ImageURLRequest,
+    ImageBodyRequest,
     TextEmbedRequest,
 )
 from app.services.embedding import embed_batch, embed_image, embed_text
@@ -43,8 +42,7 @@ _ALLOWED_TYPES = {
 )
 async def embed_image_endpoint(
     file: UploadFile | None = File(None),
-    body: ImageBase64Request | None = None,
-    url_body: ImageURLRequest | None = None,
+    body: ImageBodyRequest | None = None,
 ):
     """
     Accepts any one of:
@@ -64,38 +62,45 @@ async def embed_image_endpoint(
             )
         image_bytes = await file.read()
 
-    # ── Base64 body ──────────────────────────────────────────────────
     elif body is not None:
-        try:
-            image_bytes = base64.b64decode(body.base64)
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid base64 data")
+        # ── Base64 body ────────────────────────────────────────────
+        if body.base64 is not None:
+            try:
+                image_bytes = base64.b64decode(body.base64)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid base64 data")
 
-    # ── URL body ─────────────────────────────────────────────────────
-    elif url_body is not None:
-        url = str(url_body.url)
-        try:
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-                response = await client.get(url)
-            response.raise_for_status()
-        except httpx.TimeoutException:
-            raise HTTPException(status_code=408, detail=f"Request timed out fetching URL: {url}")
-        except httpx.HTTPStatusError as exc:
+        # ── URL body ─────────────────────────────────────────────────
+        elif body.url is not None:
+            url = str(body.url)
+            try:
+                async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                    response = await client.get(url)
+                response.raise_for_status()
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=408, detail=f"Request timed out fetching URL: {url}")
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to fetch image URL (HTTP {exc.response.status_code}): {url}",
+                )
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail=f"Could not retrieve URL: {exc}")
+
+            content_type = response.headers.get("content-type", "").split(";")[0].strip()
+            if content_type and content_type not in _ALLOWED_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported content type '{content_type}' at URL. "
+                           f"Allowed: {', '.join(sorted(_ALLOWED_TYPES))}",
+                )
+            image_bytes = response.content
+
+        else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to fetch image URL (HTTP {exc.response.status_code}): {url}",
+                detail="JSON body must include either 'base64' or 'url'.",
             )
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Could not retrieve URL: {exc}")
-
-        content_type = response.headers.get("content-type", "").split(";")[0].strip()
-        if content_type and content_type not in _ALLOWED_TYPES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported content type '{content_type}' at URL. "
-                       f"Allowed: {', '.join(sorted(_ALLOWED_TYPES))}",
-            )
-        image_bytes = response.content
 
     if not image_bytes:
         raise HTTPException(

@@ -24,14 +24,10 @@ class TextEmbedRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10_000, description="Text to embed")
 
 
-class ImageBase64Request(BaseModel):
-    """Request body for base64-encoded image embedding."""
-    base64: str = Field(..., min_length=1, description="Base64-encoded image data")
-
-
-class ImageURLRequest(BaseModel):
-    """Request body for URL-referenced image embedding."""
-    url: AnyHttpUrl = Field(..., description="Publicly accessible image URL")
+class ImageBodyRequest(BaseModel):
+    """Request body for image embedding — provide exactly one of: base64 or url."""
+    base64: Optional[str] = Field(None, min_length=1, description="Base64-encoded image data")
+    url: Optional[AnyHttpUrl] = Field(None, description="Publicly accessible image URL")
 
 
 class BatchItem(BaseModel):
